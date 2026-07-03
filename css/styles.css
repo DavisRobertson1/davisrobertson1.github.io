@@ -165,6 +165,8 @@ a:hover { text-decoration: underline; }
   position: fixed; inset: 0; z-index: 500; display: grid; place-items: center;
   background: rgba(3, 7, 18, .82); backdrop-filter: blur(4px);
 }
+/* display:grid above would defeat the hidden attribute; force it */
+.minigame-host[hidden] { display: none; }
 
 /* ---------------------------------------------------------------- responsive */
 @media (max-width: 720px) {
