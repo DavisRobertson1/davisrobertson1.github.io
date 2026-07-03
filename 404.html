@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 — Destination Host Unreachable</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+
+  <style>
+    /* Self-contained error page — no external CSS/JS deps so it always renders.
+       Palette matches the site (index.html / styles.css dark theme). */
+    :root {
+      --bg: #0d1117;
+      --panel: #161d28;
+      --chrome: #1c2530;
+      --text: #e6edf3;
+      --muted: #9aa7b4;
+      --accent: #6ea8fe;
+      --red: #f47067;
+      --green: #57ab5a;
+      --border: #26303c;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 50% -10%, #16233b 0%, var(--bg) 60%);
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1.25rem;
+    }
+
+    main { width: 100%; max-width: 640px; }
+
+    .terminal {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      overflow: hidden;
+    }
+    .terminal__bar {
+      display: flex; align-items: center; gap: .5rem;
+      background: var(--chrome);
+      border-bottom: 1px solid var(--border);
+      padding: .6rem .9rem;
+    }
+    .terminal__bar .light { width: 11px; height: 11px; border-radius: 50%; background: var(--border); }
+    .terminal__bar .light--r { background: #e5534b; }
+    .terminal__bar .light--y { background: #c69026; }
+    .terminal__bar .light--g { background: #46954a; }
+    .terminal__title {
+      margin-left: .5rem;
+      font-family: var(--mono); font-size: .72rem; color: var(--muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .terminal__body {
+      font-family: var(--mono);
+      font-size: .84rem;
+      line-height: 1.7;
+      padding: 1.1rem 1.2rem 1.3rem;
+      margin: 0;
+      overflow-x: auto;
+    }
+    .terminal__body .prompt { color: var(--green); }
+    .terminal__body .cmd { color: var(--text); }
+    .terminal__body .out { color: var(--muted); }
+    .terminal__body .err { color: var(--red); }
+    .terminal__body .path { color: var(--accent); word-break: break-all; }
+
+    /* staggered line reveal; reduced-motion shows everything at once */
+    .terminal__body .line { display: block; opacity: 0; animation: reveal .01s steps(1) forwards; }
+    .line:nth-child(1)  { animation-delay: .15s; }
+    .line:nth-child(2)  { animation-delay: .65s; }
+    .line:nth-child(3)  { animation-delay: 1.45s; }
+    .line:nth-child(4)  { animation-delay: 2.25s; }
+    .line:nth-child(5)  { animation-delay: 3.05s; }
+    .line:nth-child(6)  { animation-delay: 3.35s; }
+    .line:nth-child(7)  { animation-delay: 3.55s; }
+    .line:nth-child(8)  { animation-delay: 3.75s; }
+    .line:nth-child(9)  { animation-delay: 4.35s; }
+    @keyframes reveal { to { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .terminal__body .line { animation: none; opacity: 1; }
+      .cursor { animation: none !important; }
+    }
+    .cursor {
+      display: inline-block; width: .55em; height: 1.05em;
+      background: var(--text); vertical-align: text-bottom;
+      animation: blink 1.1s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .status { text-align: center; margin-top: 2rem; }
+    .status h1 {
+      font-size: clamp(2.6rem, 9vw, 4rem);
+      margin: 0 0 .3rem; letter-spacing: -.02em;
+    }
+    .status p {
+      color: var(--muted); font-size: 1.02rem; line-height: 1.6;
+      max-width: 46ch; margin: 0 auto 1.75rem;
+    }
+    .actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .actions a {
+      color: var(--text); text-decoration: none; font-weight: 600; font-size: .92rem;
+      border: 1px solid var(--border); padding: .6rem 1.1rem; border-radius: 999px;
+      transition: border-color .2s ease, color .2s ease;
+    }
+    .actions a:hover { border-color: var(--accent); color: var(--accent); }
+    .actions a.primary { border-color: var(--accent); color: var(--accent); }
+
+    footer { margin-top: 2.5rem; text-align: center; }
+    footer p { color: var(--muted); font-size: .8rem; margin: 0; font-family: var(--mono); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="terminal" role="img" aria-label="Terminal showing a ping to this page timing out with 100% packet loss">
+      <div class="terminal__bar" aria-hidden="true">
+        <span class="light light--r"></span>
+        <span class="light light--y"></span>
+        <span class="light light--g"></span>
+        <span class="terminal__title">visitor@cdavisrobertson.com — ping</span>
+      </div>
+      <pre class="terminal__body" aria-hidden="true"><span class="line"><span class="prompt">$</span> <span class="cmd">ping <span class="path" id="req-path">/this-page</span></span></span><span class="line out">PING <span class="path-echo">/this-page</span>: 56 data bytes</span><span class="line out">Request timeout for icmp_seq 0</span><span class="line out">Request timeout for icmp_seq 1</span><span class="line out">Request timeout for icmp_seq 2</span><span class="line out">--- ping statistics ---</span><span class="line out">3 packets transmitted, 0 packets received, <span class="err">100.0% packet loss</span></span><span class="line err">404: Destination Host Unreachable</span><span class="line"><span class="prompt">$</span> <span class="cursor"></span></span></pre>
+    </div>
+
+    <div class="status">
+      <h1>404</h1>
+      <p>No route to this page — it may have been dropped at the gate, or it never existed. Retransmission won&rsquo;t help.</p>
+      <nav class="actions" aria-label="Where to go instead">
+        <a class="primary" href="/">Route me home</a>
+        <a href="mailto:davis@cdavisrobertson.com">Report a broken link</a>
+      </nav>
+    </div>
+
+    <footer><p>cdavisrobertson.com</p></footer>
+  </main>
+
+  <script>
+    /* Echo the actually-requested path into the fake ping output.
+       Guarded: the static /this-page fallback already reads fine without JS. */
+    (function () {
+      try {
+        var p = location.pathname || "/this-page";
+        if (p.length > 48) p = p.slice(0, 45) + "…";
+        document.getElementById("req-path").textContent = p;
+        var echoes = document.getElementsByClassName("path-echo");
+        for (var i = 0; i < echoes.length; i++) echoes[i].textContent = p;
+      } catch (e) { /* keep fallback text */ }
+    })();
+  </script>
+</body>
+</html>
