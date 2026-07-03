@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Davis Robertson — Coming Soon</title>
+  <meta name="description" content="Davis Robertson — Graduate Researcher in Network Systems. Personal site coming soon." />
+
+  <meta property="og:title" content="Davis Robertson — Coming Soon" />
+  <meta property="og:description" content="Graduate Researcher in Network Systems. Site under construction." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://cdavisrobertson.com" />
+
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <style>
+    /* Self-contained landing page — no external CSS/JS deps so it always renders. */
+    :root {
+      --bg: #0d1117;
+      --panel: #161d28;
+      --text: #e6edf3;
+      --muted: #9aa7b4;
+      --accent: #6ea8fe;
+      --accent2: #2563eb;
+      --border: #26303c;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 50% -10%, #16233b 0%, var(--bg) 60%);
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1.25rem;
+      overflow: hidden;
+    }
+    /* animated network canvas sits behind the content */
+    #net { position: fixed; inset: 0; z-index: 0; opacity: .5; }
+    @media (prefers-reduced-motion: reduce) { #net { display: none; } }
+
+    .card {
+      position: relative; z-index: 1;
+      max-width: 620px; width: 100%;
+      background: color-mix(in srgb, var(--panel) 78%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 3rem 2.5rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      backdrop-filter: blur(8px);
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--accent); border: 1px solid var(--border);
+      padding: .35rem .8rem; border-radius: 999px; margin-bottom: 1.75rem;
+    }
+    .badge .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+      box-shadow: 0 0 0 0 rgba(110,168,254,.6); animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(110,168,254,.5); }
+      70% { box-shadow: 0 0 0 10px rgba(110,168,254,0); }
+      100% { box-shadow: 0 0 0 0 rgba(110,168,254,0); }
+    }
+    @media (prefers-reduced-motion: reduce) { .badge .dot { animation: none; } }
+
+    h1 { font-size: clamp(2.2rem, 7vw, 3.4rem); margin: 0 0 .4rem; letter-spacing: -.02em; }
+    .headline { color: var(--muted); font-weight: 600; font-size: clamp(1rem, 3vw, 1.2rem); margin: 0 0 1.5rem; }
+    .msg { color: var(--muted); font-size: 1.02rem; line-height: 1.6; margin: 0 auto 2rem; max-width: 46ch; }
+
+    .links { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .links a {
+      color: var(--text); text-decoration: none; font-weight: 600; font-size: .92rem;
+      border: 1px solid var(--border); padding: .6rem 1.1rem; border-radius: 999px;
+      transition: border-color .2s ease, color .2s ease;
+    }
+    .links a:hover { border-color: var(--accent); color: var(--accent); }
+
+    footer { position: fixed; bottom: 1rem; left: 0; right: 0; text-align: center; z-index: 1; }
+    footer p { color: var(--muted); font-size: .8rem; margin: 0; font-family: var(--mono); }
+  </style>
+</head>
+<body>
+  <canvas id="net" aria-hidden="true"></canvas>
+
+  <main class="card">
+    <span class="badge"><span class="dot"></span> Under construction</span>
+    <h1>Davis Robertson</h1>
+    <!-- Approved, verified headline phrasing (CLAUDE.md). No unverified claims on this page. -->
+    <p class="headline">Graduate Researcher in Network Systems</p>
+    <p class="msg">
+      Bandwidth slicing · traffic fairness · Wi-Fi QoS.
+      The full site is being built — check back soon.
+    </p>
+    <nav class="links" aria-label="Contact">
+      <a href="https://www.linkedin.com/in/davis-robertson/" rel="me" target="_blank">LinkedIn</a>
+      <!-- PLACEHOLDER: real Google Scholar + email URLs. Confirm with Davis before publishing. -->
+      <a href="#" rel="me">Google Scholar</a>
+      <a href="#" rel="me">Email</a>
+    </nav>
+  </main>
+
+  <footer><p>cdavisrobertson.com</p></footer>
+
+  <script>
+    /* Lightweight animated node/link field — networks flavored, no dependencies.
+       Purely decorative; guarded so it never throws on the page. */
+    (function () {
+      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce) return;
+      var c = document.getElementById("net");
+      if (!c || !c.getContext) return;
+      var ctx = c.getContext("2d"), nodes = [], N = 46, dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      function size() {
+        c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+        c.style.width = innerWidth + "px"; c.style.height = innerHeight + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      function init() {
+        nodes = [];
+        for (var i = 0; i < N; i++) {
+          nodes.push({
+            x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+            vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35
+          });
+        }
+      }
+      function frame() {
+        ctx.clearRect(0, 0, innerWidth, innerHeight);
+        for (var i = 0; i < N; i++) {
+          var a = nodes[i];
+          a.x += a.vx; a.y += a.vy;
+          if (a.x < 0 || a.x > innerWidth) a.vx *= -1;
+          if (a.y < 0 || a.y > innerHeight) a.vy *= -1;
+          for (var j = i + 1; j < N; j++) {
+            var b = nodes[j], dx = a.x - b.x, dy = a.y - b.y, d = Math.sqrt(dx * dx + dy * dy);
+            if (d < 130) {
+              ctx.strokeStyle = "rgba(110,168,254," + (0.14 * (1 - d / 130)) + ")";
+              ctx.lineWidth = 1;
+              ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            }
+          }
+          ctx.fillStyle = "rgba(110,168,254,.7)";
+          ctx.beginPath(); ctx.arc(a.x, a.y, 1.8, 0, Math.PI * 2); ctx.fill();
+        }
+        requestAnimationFrame(frame);
+      }
+      try {
+        size(); init(); frame();
+        window.addEventListener("resize", function () { size(); init(); });
+      } catch (e) { c.style.display = "none"; }
+    })();
+  </script>
+</body>
+</html>
