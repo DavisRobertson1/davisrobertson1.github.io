@@ -170,10 +170,8 @@
       } catch (e) { /* keep fallback text */ }
     })();
 
-    /* Staggered reveal of the boot transcript, then a toy shell.
-       SECURITY: this is a canned-response simulation. Whatever is typed is
-       string-matched against the fixed table in run() and rendered back with
-       textContent only — it is never evaluated, executed, or sent anywhere. */
+    /* Staggered reveal of the boot transcript, then a toy shell which
+    is never evaluated, executed, or sent anywhere. */
     (function () {
       var pre = document.querySelector(".terminal__body");
       var bootPrompt = document.getElementById("boot-prompt");
