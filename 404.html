@@ -7,6 +7,16 @@
   <meta name="robots" content="noindex" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
 
+  <script>
+    /* Opt into the animated reveal before first paint so the static lines
+       never flash. No JS or reduced-motion: class absent, output just shows. */
+    try {
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("anim");
+      }
+    } catch (e) { /* static output */ }
+  </script>
+
   <style>
     /* Self-contained error page — no external CSS/JS deps so it always renders.
        Palette matches the site (index.html / styles.css dark theme). */
@@ -66,28 +76,32 @@
       line-height: 1.7;
       padding: 1.1rem 1.2rem 1.3rem;
       margin: 0;
-      overflow-x: auto;
+      /* fixed height (~2x the boot transcript): older lines scroll out of view
+         instead of the window growing as commands are typed */
+      height: min(30.5rem, 65vh);
+      overflow: auto;
     }
     .terminal__body .prompt { color: var(--green); }
     .terminal__body .cmd { color: var(--text); }
     .terminal__body .out { color: var(--muted); }
     .terminal__body .err { color: var(--red); }
     .terminal__body .path { color: var(--accent); word-break: break-all; }
+    .terminal__body .dir { color: var(--accent); font-weight: 600; }
 
-    /* staggered line reveal; reduced-motion shows everything at once */
-    .terminal__body .line { display: block; opacity: 0; animation: reveal .01s steps(1) forwards; }
-    .line:nth-child(1)  { animation-delay: .15s; }
-    .line:nth-child(2)  { animation-delay: .65s; }
-    .line:nth-child(3)  { animation-delay: 1.45s; }
-    .line:nth-child(4)  { animation-delay: 2.25s; }
-    .line:nth-child(5)  { animation-delay: 3.05s; }
-    .line:nth-child(6)  { animation-delay: 3.35s; }
-    .line:nth-child(7)  { animation-delay: 3.55s; }
-    .line:nth-child(8)  { animation-delay: 3.75s; }
-    .line:nth-child(9)  { animation-delay: 4.35s; }
-    @keyframes reveal { to { opacity: 1; } }
+    /* live input line of the toy shell (appended by JS after the boot transcript) */
+    .line--input { display: flex; gap: .55ch; align-items: baseline; }
+    .term-in {
+      flex: 1; min-width: 2ch;
+      background: transparent; border: 0; outline: none; padding: 0; margin: 0;
+      font: inherit; color: var(--text); caret-color: var(--text);
+    }
+
+    /* Staggered line reveal, driven by JS timers (see script in <head> + bottom).
+       Lines are visible by default so no JS or reduce motion gives the static output */
+    .terminal__body .line { display: block; }
+    html.anim .terminal__body .line { opacity: 0; }
+    html.anim .terminal__body .line.is-on { opacity: 1; }
     @media (prefers-reduced-motion: reduce) {
-      .terminal__body .line { animation: none; opacity: 1; }
       .cursor { animation: none !important; }
     }
     .cursor {
@@ -121,19 +135,19 @@
 </head>
 <body>
   <main>
-    <div class="terminal" role="img" aria-label="Terminal showing a ping to this page timing out with 100% packet loss">
+    <div class="terminal">
       <div class="terminal__bar" aria-hidden="true">
         <span class="light light--r"></span>
         <span class="light light--y"></span>
         <span class="light light--g"></span>
         <span class="terminal__title">visitor@cdavisrobertson.com — ping</span>
       </div>
-      <pre class="terminal__body" aria-hidden="true"><span class="line"><span class="prompt">$</span> <span class="cmd">ping <span class="path" id="req-path">/this-page</span></span></span><span class="line out">PING <span class="path-echo">/this-page</span>: 56 data bytes</span><span class="line out">Request timeout for icmp_seq 0</span><span class="line out">Request timeout for icmp_seq 1</span><span class="line out">Request timeout for icmp_seq 2</span><span class="line out">--- ping statistics ---</span><span class="line out">3 packets transmitted, 0 packets received, <span class="err">100.0% packet loss</span></span><span class="line err">404: Destination Host Unreachable</span><span class="line"><span class="prompt">$</span> <span class="cursor"></span></span></pre>
+      <pre class="terminal__body" aria-live="polite"><span class="line"><span class="prompt">$</span> <span class="cmd">ping <span class="path" id="req-path">/this-page</span></span></span><span class="line out">PING <span class="path-echo">/this-page</span>: 56 data bytes</span><span class="line out">Request timeout for icmp_seq 0</span><span class="line out">Request timeout for icmp_seq 1</span><span class="line out">Request timeout for icmp_seq 2</span><span class="line out">--- ping statistics ---</span><span class="line out">3 packets transmitted, 0 packets received, <span class="err">100.0% packet loss</span></span><span class="line err">404: Destination Host Unreachable</span><span class="line" id="boot-prompt"><span class="prompt">$</span> <span class="cursor"></span></span></pre>
     </div>
 
     <div class="status">
       <h1>404</h1>
-      <p>No route to this page — it may have been dropped at the gate, or it never existed. Retransmission won&rsquo;t help.</p>
+      <p>No route to this page.</p>
       <nav class="actions" aria-label="Where to go instead">
         <a class="primary" href="/">Route me home</a>
         <a href="mailto:davis@cdavisrobertson.com">Report a broken link</a>
@@ -154,6 +168,280 @@
         var echoes = document.getElementsByClassName("path-echo");
         for (var i = 0; i < echoes.length; i++) echoes[i].textContent = p;
       } catch (e) { /* keep fallback text */ }
+    })();
+
+    /* Staggered reveal of the boot transcript, then a toy shell.
+       SECURITY: this is a canned-response simulation. Whatever is typed is
+       string-matched against the fixed table in run() and rendered back with
+       textContent only — it is never evaluated, executed, or sent anywhere. */
+    (function () {
+      var pre = document.querySelector(".terminal__body");
+      var bootPrompt = document.getElementById("boot-prompt");
+      if (!pre || !bootPrompt) return;
+
+      /* ---- fake read-only filesystem (hardcoded data, nothing real) ---- */
+      function d(children) { return { type: "dir", children: children }; }
+      function f(content) { return { type: "file", content: content }; }
+      var ROOT = d({
+        flag_storage: d({
+          "flag.txt": f("Haha, nice try.")
+        }),
+        home: d({
+          visitor: d({
+            "README.txt": f("TODO: Figure out what is supposed to go in this file.")
+          })
+        })
+      });
+      var HOME = ["home", "visitor"];
+      var cwd = HOME.slice();
+      var hist = [], histIdx = 0;
+      var liveLine, ps1, inp;
+
+      function getNode(parts) {
+        var n = ROOT;
+        for (var i = 0; i < parts.length; i++) {
+          if (n.type !== "dir" || !Object.prototype.hasOwnProperty.call(n.children, parts[i])) return null;
+          n = n.children[parts[i]];
+        }
+        return n;
+      }
+      /* "~", absolute, and relative paths with "." / ".." → normalized segments */
+      function resolve(arg) {
+        var base, rest;
+        if (arg === "~") { base = HOME.slice(); rest = []; }
+        else if (arg.indexOf("~/") === 0) { base = HOME.slice(); rest = arg.slice(2).split("/"); }
+        else if (arg.charAt(0) === "/") { base = []; rest = arg.split("/"); }
+        else { base = cwd.slice(); rest = arg.split("/"); }
+        for (var i = 0; i < rest.length; i++) {
+          if (rest[i] === "" || rest[i] === ".") continue;
+          if (rest[i] === "..") { base.pop(); continue; }
+          base.push(rest[i]);
+        }
+        return base;
+      }
+      function promptLabel() {
+        var p = "/" + cwd.join("/"), h = "/" + HOME.join("/");
+        if (p === h) return "~ $";
+        if (p.indexOf(h + "/") === 0) return "~" + p.slice(h.length) + " $";
+        return p + " $";
+      }
+
+      function out(text, cls) {
+        var chunks = String(text).split("\n");
+        for (var i = 0; i < chunks.length; i++) {
+          var s = document.createElement("span");
+          s.className = "line is-on" + (cls ? " " + cls : "");
+          s.textContent = chunks[i];
+          pre.insertBefore(s, liveLine);
+        }
+      }
+      function outLs(node) {
+        var names = Object.keys(node.children);
+        if (!names.length) return;
+        var s = document.createElement("span");
+        s.className = "line is-on";
+        for (var i = 0; i < names.length; i++) {
+          var it = document.createElement("span");
+          if (node.children[names[i]].type === "dir") it.className = "dir";
+          it.textContent = names[i];
+          s.appendChild(it);
+          if (i < names.length - 1) s.appendChild(document.createTextNode("  "));
+        }
+        pre.insertBefore(s, liveLine);
+      }
+      function echoCmd(raw) {
+        var s = document.createElement("span");
+        s.className = "line is-on";
+        var p = document.createElement("span");
+        p.className = "prompt";
+        p.textContent = promptLabel();
+        s.appendChild(p);
+        s.appendChild(document.createTextNode(" " + raw));
+        pre.insertBefore(s, liveLine);
+      }
+      function clearScreen() {
+        while (pre.firstChild && pre.firstChild !== liveLine) pre.removeChild(pre.firstChild);
+      }
+      function trim() {
+        while (pre.children.length > 300 && pre.firstChild !== liveLine) pre.removeChild(pre.firstChild);
+      }
+
+      var EDITORS = { vim: 1, vi: 1, nvim: 1, nano: 1, emacs: 1, pico: 1 };
+      var PKG = { apt: 1, "apt-get": 1, aptitude: 1, dnf: 1, yum: 1, pacman: 1, apk: 1, snap: 1, brew: 1, pip: 1, pip3: 1, npm: 1, cargo: 1, gem: 1 };
+      var NET = { ping: 1, curl: 1, wget: 1, ssh: 1, traceroute: 1, dig: 1, nc: 1, telnet: 1 };
+
+      function run(raw) {
+        var t = raw.trim().split(/\s+/), cmd = t[0], args = t.slice(1), i;
+        var files = [];
+        for (i = 0; i < args.length; i++) if (args[i].charAt(0) !== "-") files.push(args[i]);
+
+        switch (cmd) {
+          case "ls":
+            var targets = files.length ? files : ["."];
+            for (i = 0; i < targets.length; i++) {
+              var ln = getNode(resolve(targets[i]));
+              if (!ln) out("ls: cannot access '" + targets[i] + "': No such file or directory");
+              else if (ln.type === "file") out(targets[i]);
+              else outLs(ln);
+            }
+            break;
+          case "pwd":
+            out("/" + cwd.join("/"));
+            break;
+          case "cd":
+            var dest = files[0] || "~";
+            var parts = resolve(dest);
+            var dn = getNode(parts);
+            if (!dn) out("cd: " + dest + ": No such file or directory");
+            else if (dn.type !== "dir") out("cd: " + dest + ": Not a directory");
+            else cwd = parts;
+            break;
+          case "cat":
+            if (!files.length) { out("usage: cat [file ...]"); break; }
+            for (i = 0; i < files.length; i++) {
+              var cn = getNode(resolve(files[i]));
+              if (!cn) out("cat: " + files[i] + ": No such file or directory");
+              else if (cn.type === "dir") out("cat: " + files[i] + ": Is a directory");
+              else out(cn.content);
+            }
+            break;
+          case "echo": out(args.join(" ")); break;
+          case "clear": clearScreen(); break;
+          case "whoami": out("visitor"); break;
+          case "hostname": out("cdavisrobertson.com"); break;
+          case "uname": out(args.length ? "Linux cdavisrobertson 6.4.0-packet #404 SMP x86_64 GNU/Linux" : "Linux"); break;
+          case "history": for (i = 0; i < hist.length; i++) out("  " + (i + 1) + "  " + hist[i]); break;
+          case "man": out(files.length ? "No manual entry for " + files[0] : "What manual page do you want?"); break;
+          case "help": out("Toy shell — nothing you type is executed or sent anywhere.\nTry: ls, cd, cat, pwd, echo, clear, whoami, uname, history, man, exit"); break;
+          case "sudo": out("visitor is not in the sudoers file.  This incident will be reported."); break;
+          case "rm": out(files.length ? "rm: cannot remove '" + files[0] + "': Read-only file system" : "rm: missing operand"); break;
+          case "mkdir": out(files.length ? "mkdir: cannot create directory '" + files[0] + "': Read-only file system" : "mkdir: missing operand"); break;
+          case "touch": out(files.length ? "touch: cannot touch '" + files[0] + "': Read-only file system" : "touch: missing file operand"); break;
+          case "mv": case "cp": case "chmod": case "chown": out(cmd + ": Read-only file system"); break;
+          case "exit": case "logout":
+            out("logout\nConnection to cdavisrobertson.com closed.");
+            liveLine.style.display = "none";
+            inp.disabled = true;
+            break;
+          default:
+            if (EDITORS[cmd]) out("Command '" + cmd + "' not found, but can be installed with:\n  sudo apt install " + cmd);
+            else if (PKG[cmd]) out(cmd + ": failed to fetch: connect: Network is unreachable");
+            else if (NET[cmd]) out(cmd + ": connect: Network is unreachable");
+            else out(cmd + ": command not found");
+        }
+      }
+
+      /* tab completion: first word completes command names, later words
+         complete paths in the fake filesystem */
+      var COMMANDS = ["cat", "cd", "chmod", "chown", "clear", "cp", "echo", "exit", "help", "history", "hostname", "logout", "ls", "man", "mkdir", "mv", "pwd", "rm", "sudo", "touch", "uname", "whoami"]
+        .concat(Object.keys(EDITORS), Object.keys(PKG), Object.keys(NET)).sort();
+
+      function complete() {
+        var v = inp.value;
+        var tok = v.match(/(\S*)$/)[1];
+        var head = v.slice(0, v.length - tok.length);
+        var dirPart = "", prefix = tok, names, node = null, i;
+        if (head.trim() === "" && tok.indexOf("/") === -1) {
+          if (!tok) return;
+          names = COMMANDS;
+        } else {
+          var slash = tok.lastIndexOf("/");
+          if (slash >= 0) { dirPart = tok.slice(0, slash + 1); prefix = tok.slice(slash + 1); }
+          node = getNode(resolve(dirPart || "."));
+          if (!node || node.type !== "dir") return;
+          names = Object.keys(node.children);
+        }
+        var matches = [];
+        for (i = 0; i < names.length; i++) if (names[i].indexOf(prefix) === 0) matches.push(names[i]);
+        if (!matches.length) return;
+        matches.sort();
+        var cp = matches[0];
+        for (i = 1; i < matches.length; i++) while (matches[i].indexOf(cp) !== 0) cp = cp.slice(0, -1);
+        if (matches.length === 1) {
+          var suffix = node && node.children[matches[0]].type === "dir" ? "/" : " ";
+          inp.value = head + dirPart + matches[0] + suffix;
+        } else if (cp.length > prefix.length) {
+          inp.value = head + dirPart + cp;
+        } else {
+          echoCmd(v);
+          out(matches.join("  "));
+          pre.scrollTop = pre.scrollHeight;
+        }
+      }
+
+      function startShell() {
+        bootPrompt.style.display = "none";
+        var title = document.querySelector(".terminal__title");
+        if (title) title.textContent = "visitor@cdavisrobertson.com — bash";
+
+        liveLine = document.createElement("span");
+        liveLine.className = "line is-on line--input";
+        ps1 = document.createElement("span");
+        ps1.className = "prompt";
+        ps1.textContent = promptLabel();
+        inp = document.createElement("input");
+        inp.className = "term-in";
+        inp.type = "text";
+        inp.maxLength = 160;
+        inp.autocomplete = "off";
+        inp.autocapitalize = "none";
+        inp.spellcheck = false;
+        inp.setAttribute("aria-label", "Toy terminal input. Commands are simulated; nothing is executed.");
+        liveLine.appendChild(ps1);
+        liveLine.appendChild(inp);
+        pre.appendChild(liveLine);
+
+        inp.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            var raw = inp.value;
+            inp.value = "";
+            echoCmd(raw);
+            if (raw.trim()) { hist.push(raw); histIdx = hist.length; run(raw); }
+            ps1.textContent = promptLabel();
+            trim();
+            pre.scrollTop = pre.scrollHeight;
+          } else if (e.key === "Tab") {
+            complete();
+            e.preventDefault();
+          } else if (e.key === "ArrowUp") {
+            if (histIdx > 0) { histIdx--; inp.value = hist[histIdx]; }
+            e.preventDefault();
+          } else if (e.key === "ArrowDown") {
+            if (histIdx < hist.length) { histIdx++; inp.value = hist[histIdx] || ""; }
+            e.preventDefault();
+          } else if (e.ctrlKey && e.key === "c") {
+            echoCmd(inp.value + "^C");
+            inp.value = "";
+            e.preventDefault();
+          } else if (e.ctrlKey && e.key === "l") {
+            clearScreen();
+            e.preventDefault();
+          }
+        });
+        /* click anywhere in the terminal focuses the input (unless selecting text) */
+        pre.addEventListener("click", function () {
+          var sel = window.getSelection();
+          if ((!sel || sel.isCollapsed) && !inp.disabled) inp.focus();
+        });
+        /* auto-focus only on devices with a real keyboard/pointer */
+        if (window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          try { inp.focus({ preventScroll: true }); } catch (e) { /* fine unfocused */ }
+        }
+      }
+
+      /* boot transcript reveal, then hand over to the shell */
+      var delays = [150, 650, 1450, 2250, 3050, 3350, 3550, 3750, 4350];
+      if (document.documentElement.classList.contains("anim")) {
+        var lines = pre.querySelectorAll(".line");
+        for (var i = 0; i < lines.length; i++) {
+          (function (el, ms) {
+            setTimeout(function () { el.classList.add("is-on"); }, ms);
+          })(lines[i], delays[i] != null ? delays[i] : 4350);
+        }
+        setTimeout(startShell, 4650);
+      } else {
+        startShell();
+      }
     })();
   </script>
 </body>
